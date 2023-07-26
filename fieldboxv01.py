@@ -1,43 +1,37 @@
 import digitalio
-import board
-import busio
-from adafruit_epd.ssd1680 import Adafruit_SSD1680
-from adafruit_epd.ssd1675 import Adafruit_SSD1675
+from board import SCK, MOSI, MISO, D10, D9
+from PIL import Image, ImageDraw, ImageFont
+import Adafruit_SSD1675
 
-# Define the CS, DC, RST, and Busy pins
-CS_PIN = board.CE0
-DC_PIN = board.D25
-RST_PIN = board.D24
-BUSY_PIN = board.D23
+# Set up the eInk display
+displayio.release_displays()
 
-spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
+cs_pin = digitalio.DigitalInOut(D10)
+dc_pin = digitalio.DigitalInOut(D9)
+reset_pin = digitalio.DigitalInOut(D9)
+busy_pin = digitalio.DigitalInOut(D9)
+spi = busio.SPI(clock=SCK, MOSI=MOSI, MISO=MISO)
 
-ecs = digitalio.DigitalInOut(CS_PIN)
-dc = digitalio.DigitalInOut(DC_PIN)
-rst = digitalio.DigitalInOut(RST_PIN)
-busy = digitalio.DigitalInOut(BUSY_PIN)
+display = Adafruit_SSD1675.SSD1675(
+    250, 122, spi, cs_pin, dc_pin, reset_pin, busy_pin,
+    rotation=90
+)
 
-# Attempt to initialize the SSD1675 display
-try:
-    display = Adafruit_SSD1675(122, 250, spi, cs_pin=ecs, dc_pin=dc, sramcs_pin=None,
-                               rst_pin=rst, busy_pin=busy)
-    using_display = "SSD1675"
-except:
-    # If SSD1675 initialization fails, try SSD1680
-    try:
-        display = Adafruit_SSD1680(122, 250, spi, cs_pin=ecs, dc_pin=dc, sramcs_pin=None,
-                                   rst_pin=rst, busy_pin=busy)
-        using_display = "SSD1680"
-    except:
-        print("No supported eInk display found!")
-        using_display = None
+# Clear the display
+display.fill(Adafruit_SSD1675.WHITE)
+display.pixel(5, 5, Adafruit_SSD1675.BLACK)
 
-if using_display:
-    # Clear the display and display "Hello World"
-    display.fill(Adafruit_SSD1680.WHITE)
-    display.text("Hello World", 10, 45, Adafruit_SSD1680.BLACK)
-    display.display()
-    print(f"Message displayed using {using_display} display!")
+# Create an image buffer
+image = Image.new("1", (display.width, display.height))
+draw = ImageDraw.Draw(image)
 
-else:
-    print("Unable to show the message. No supported eInk display detected!")
+# Load a font
+font = ImageFont.load_default()
+
+# Draw text on the image buffer
+draw.text((10, 45), "Hello World", font=font, fill=255)
+
+# Display the image on the eInk screen
+display.image(image)
+display.display()
+
